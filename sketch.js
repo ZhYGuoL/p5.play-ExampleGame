@@ -11,142 +11,152 @@ document.addEventListener("contextmenu", (event) => event.preventDefault());
 
 let player, goal, ball;
 let staticStart;
-let obstacles, lines, nodes;
+let staticObstacles, spinningObstacles, lines, nodes;
 let shouldMakeWall = false;
 
 function setup() {
-  // createCanvas size is determined by the window size
-  createCanvas(window.innerWidth, window.innerHeight);
-  new World(0, 9.8);
+	// createCanvas size is determined by the window size
+	createCanvas(window.innerWidth, window.innerHeight);
+	new World(0, 9.8);
+	
+	staticObstacles = new Group();
+	spinningObstacles = new Group();
 
-  obstacles = new Group();
+	lines = new Group();
+	lines.friction = 0;
 
-  lines = new Group();
-  lines.friction = 0;
+	nodes = new Group();
+	nodes.overlap(allSprites);
 
-  nodes = new Group();
-  nodes.overlap(allSprites);
-
-  startNewGame();
+	startNewGame();
 }
 
 function startNewGame() {
-  startCoords = [random(0.05, 0.95), random(0.05, 0.15)];
-  finishCoords = [random(0.05, 0.95), random(0.06, 0.95)];
-  while (
-    finishCoords[1] < startCoords[1] ||
-    ((10 * finishCoords[0] - 10 * startCoords[0]) ** 2 +
-      (10 * finishCoords[1] - 10 * startCoords[1]) ** 2) /
-      10 <
-      8 ||
-    Math.abs(finishCoords[0] - startCoords[0]) < 0.5
-  ) {
-    console.log("finding new finish coords: " + startCoords);
-    startCoords = [random(0.05, 0.95), random(0.05, 0.15)];
-    finishCoords = [random(0.06, 1), random(0.06, 1)];
-  }
-  player = createSprite(
-    window.innerWidth * startCoords[0],
-    window.innerHeight * startCoords[1],
-    30
-  );
-  player.shapeColor = 200;
+	startCoords = [random(0.05, 0.95), random(0.05, 0.15)];
+	finishCoords = [random(0.05, 0.95), random(0.06, 0.95)];
+	while (
+		finishCoords[1] < startCoords[1] ||
+		((10 * finishCoords[0] - 10 * startCoords[0]) ** 2 +
+			(10 * finishCoords[1] - 10 * startCoords[1]) ** 2) /
+			10 <
+			8 ||
+		Math.abs(finishCoords[0] - startCoords[0]) < 0.5
+	) {
+		console.log("finding new finish coords: " + startCoords);
+		startCoords = [random(0.05, 0.95), random(0.05, 0.15)];
+		finishCoords = [random(0.06, 1), random(0.06, 1)];
+	}
+	player = createSprite(
+		window.innerWidth * startCoords[0],
+		window.innerHeight * startCoords[1],
+		30
+	);
+	player.shapeColor = 200;
 
-  goal = createSprite(
-    window.innerWidth * finishCoords[0],
-    window.innerHeight * finishCoords[1],
-    30,
-    "static"
-  );
-  goal.shapeColor = "red";
-  player.overlap(goal, win);
+	goal = createSprite(
+		window.innerWidth * finishCoords[0],
+		window.innerHeight * finishCoords[1],
+		30,
+		"static"
+	);
+	goal.shapeColor = "green";
+	player.overlap(goal, win);
 
-  obstacles.removeSprites();
-  for (let i = 0; i < 10; i++) {
-    console.log(i);
-    let xPos = random(
-      min(startCoords[0], finishCoords[0]) + 0.05,
-      max(startCoords[0], finishCoords[0]) - 0.05
-    );
-    let yPos = random(
-      min(startCoords[1], finishCoords[1]) + 0.05,
-      max(startCoords[1], finishCoords[1]) - 0.05
-    );
-    let coords = [xPos * window.innerWidth, yPos * window.innerHeight];
-
-    let obstacle = obstacles.sprite(coords[0], coords[1], 50, 200, "static");
-    obstacle.shapeColor = "black";
-  }
-  player.overlap(obstacles, reset);
-  staticStart = 200;
+	staticObstacles.removeSprites();
+	spinningObstacles.removeSprites();
+	for (let i = 0; i < 10; i++) {
+		console.log(i);
+		let xPos = random(
+			min(startCoords[0], finishCoords[0]) + 0.05,
+			max(startCoords[0], finishCoords[0]) - 0.05
+		);
+		let yPos = random(
+			min(startCoords[1], finishCoords[1]) + 0.05,
+			max(startCoords[1], finishCoords[1]) - 0.05
+		);
+		let coords = [xPos * window.innerWidth, yPos * window.innerHeight];
+		
+		
+		if (Math.random > 0.5) {
+			let obstacle = staticObstacles.sprite(coords[0], coords[1], 50, 200, "static");
+			obstacle.shapeColor = "red";
+		}
+		else {
+			let obstacle = spinningObstacles.sprite(coords[0], coords[1], 50, 200, "static");
+			obstacle.rotationSpeed = random(-10, 10);
+			obstacle.shapeColor = "blue";
+		}
+	}
+	player.overlap(staticObstacles, reset);
+	staticStart = 200;
 }
 
 function reset() {
-  console.log("reset");
-  lines.removeSprites();
-  nodes.removeSprites();
-  staticStart = 200;
+	console.log("reset");
+	lines.removeSprites();
+	nodes.removeSprites();
+	staticStart = 200;
 }
 
 function draw() {
-  background(220);
+	background(220);
 
-  fill(0);
+	fill(0);
 
-  staticStart--;
+	staticStart--;
 
-  if (staticStart > 0) {
-    player.x = startCoords[0] * window.innerWidth;
-    player.y = startCoords[1] * window.innerHeight;
-    player.speed = 0;
-  }
+	if (staticStart > 0) {
+		player.x = startCoords[0] * window.innerWidth;
+		player.y = startCoords[1] * window.innerHeight;
+		player.speed = 0;
+	}
 
-  if (player.y > height) {
-    reset();
-  }
+	if (player.y > height) {
+		reset();
+	}
 }
 
 function win() {
-  console.log("win");
-  lines.removeSprites();
-  nodes.removeSprites();
-  player.remove();
-  goal.remove();
-  startNewGame();
+	console.log("win");
+	lines.removeSprites();
+	nodes.removeSprites();
+	player.remove();
+	goal.remove();
+	startNewGame();
 }
 
 function keyPressed() {
-  if (key === " " && staticStart) {
-    staticStart = !staticStart;
-  }
-  if (key === "z") {
-    nodes.removeSprites();
-    lines.removeSprites();
-  }
+	if (key === " " && staticStart) {
+		staticStart = !staticStart;
+	}
+	if (key === "z") {
+		nodes.removeSprites();
+		lines.removeSprites();
+	}
 }
 
 function mousePressed() {
-  if (mouseButton === LEFT) {
-    let lastNode;
-    if (nodes.length) lastNode = nodes[nodes.length - 1];
+	if (mouseButton === LEFT) {
+		let lastNode;
+		if (nodes.length) lastNode = nodes[nodes.length - 1];
 
-    if (!nodes.length || lastNode.x != mouseX || lastNode.y != mouseY) {
-      let node = nodes.sprite(mouseX, mouseY, 10, "static");
-      node.life = 200;
+		if (!nodes.length || lastNode.x != mouseX || lastNode.y != mouseY) {
+			let node = nodes.sprite(mouseX, mouseY, 10, "static");
+			node.life = 200;
 
-      if (nodes.length > 1 && shouldMakeWall) {
-        let coords = [
-          [mouseX, mouseY],
-          [lastNode.x, lastNode.y],
-        ];
-        let line = lines.sprite(mouseX, mouseY, coords, "static");
-        line.life = 200;
-      }
-      shouldMakeWall = true;
-    }
-  } else if (mouseButton === RIGHT) {
-    shouldMakeWall = false;
-  }
+			if (nodes.length > 1 && shouldMakeWall) {
+				let coords = [
+					[mouseX, mouseY],
+					[lastNode.x, lastNode.y],
+				];
+				let line = lines.sprite(mouseX, mouseY, coords, "static");
+				line.life = 200;
+			}
+			shouldMakeWall = true;
+		}
+	} else if (mouseButton === RIGHT) {
+		shouldMakeWall = false;
+	}
 }
 
 // window.addEventListener('resize', onWindowResize, false)
