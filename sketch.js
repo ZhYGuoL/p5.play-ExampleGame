@@ -1,7 +1,7 @@
 // IDEAS
-// Force the game to have a more horizontal aspect ratio
-// rotating obstacles
-// moving obstacles
+// TODOForce the game to have a more horizontal aspect ratio
+// TODO rotating obstacles
+// TODO if touch moving obstacle, reset 
 // moving finish
 // checkpoints
 // once Quinton implements the virtual camera, have the finish be offscreen so that player has to travel to it
@@ -11,16 +11,17 @@ document.addEventListener("contextmenu", (event) => event.preventDefault());
 
 let player, goal, ball;
 let staticStart;
-let staticObstacles, spinningObstacles, lines, nodes;
+let obstacles, lines, nodes;
 let shouldMakeWall = false;
+let cosValue = 0;
+let phaseShift = Math.random(0, 2);
 
 function setup() {
 	// createCanvas size is determined by the window size
 	createCanvas(window.innerWidth, window.innerHeight);
 	new World(0, 9.8);
 	
-	staticObstacles = new Group();
-	spinningObstacles = new Group();
+	obstacles = new Group();
 
 	lines = new Group();
 	lines.friction = 0;
@@ -42,7 +43,6 @@ function startNewGame() {
 			8 ||
 		Math.abs(finishCoords[0] - startCoords[0]) < 0.5
 	) {
-		console.log("finding new finish coords: " + startCoords);
 		startCoords = [random(0.05, 0.95), random(0.05, 0.15)];
 		finishCoords = [random(0.06, 1), random(0.06, 1)];
 	}
@@ -62,33 +62,46 @@ function startNewGame() {
 	goal.shapeColor = "green";
 	player.overlap(goal, win);
 
-	staticObstacles.removeSprites();
-	spinningObstacles.removeSprites();
-	for (let i = 0; i < 10; i++) {
-		console.log(i);
+	obstacles.removeSprites();
+
+	for (let i = 0; i < 8; i++) {
 		let xPos = random(
 			min(startCoords[0], finishCoords[0]) + 0.05,
 			max(startCoords[0], finishCoords[0]) - 0.05
 		);
-		let yPos = random(
-			min(startCoords[1], finishCoords[1]) + 0.05,
-			max(startCoords[1], finishCoords[1]) - 0.05
-		);
+		let yPos = random(0.05, 0.95);
 		let coords = [xPos * window.innerWidth, yPos * window.innerHeight];
 		
-		
-		if (Math.random > 0.5) {
-			let obstacle = staticObstacles.sprite(coords[0], coords[1], 50, 200, "static");
-			obstacle.shapeColor = "red";
-		}
-		else {
-			let obstacle = spinningObstacles.sprite(coords[0], coords[1], 50, 200, "static");
-			obstacle.rotationSpeed = random(-10, 10);
-			obstacle.shapeColor = "blue";
-		}
+		let obstacle = new Sprite(coords[0], coords[1], 50, 200, "static");
+		obstacle.shapeColor = "red";
+		obstacle.rotation = random(0, 360);
+
+
+		obstacles.add(obstacle);
+		// if (Math.random() > 0.5) {
+			// 	obstacle.shapeColor = "red";
+			// }
+			// else {
+				// 	obstacle.rotationSpeed = random(-10, 10);
+				// 	obstacle.shapeColor = "blue";
+				// }
 	}
-	player.overlap(staticObstacles, reset);
+	player.overlap(obstacles, reset);
 	staticStart = 200;
+	movingXPos = random(
+		min(startCoords[0], finishCoords[0]) + 0.05,
+		max(startCoords[0], finishCoords[0]) - 0.05
+	);
+	movingObstacle1 = createSprite(window.innerWidth * movingXPos, window.innerHeight * random(0.2, 0.8), 50, 200, "static");
+	movingObstacle1.shapeColor = "blue";
+	player.overlap(movingObstacle1, reset);
+	movingXPos = random(
+		min(startCoords[0], finishCoords[0]) + 0.05,
+		max(startCoords[0], finishCoords[0]) - 0.05
+	);
+	movingObstacle2 = createSprite(window.innerWidth * movingXPos, window.innerHeight * random(0.2, 0.8), 50, 200, "static");
+	movingObstacle2.shapeColor = "green";
+	player.overlap(movingObstacle1, reset);
 }
 
 function reset() {
@@ -114,6 +127,10 @@ function draw() {
 	if (player.y > height) {
 		reset();
 	}
+
+	movingObstacle1.y = movingObstacle1.y + Math.cos(cosValue) * 5;
+	movingObstacle2.y = movingObstacle2.y + Math.cos(cosValue + phaseShift) * 5;
+	cosValue += 0.025;
 }
 
 function win() {
@@ -122,6 +139,8 @@ function win() {
 	nodes.removeSprites();
 	player.remove();
 	goal.remove();
+	movingObstacle1.remove();
+	movingObstacle2.remove();
 	startNewGame();
 }
 
