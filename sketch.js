@@ -1,14 +1,15 @@
 // IDEAS
 // TODOForce the game to have a more horizontal aspect ratio
-// TODO rotating obstacles
+// make it so rotating objects are always rotating higher than a certain speed (two ranges for randomizing speed)
 // moving finish
+// group obstacles together
+// randomize number of obstacles
 // checkpoints
 // once Quinton implements the virtual camera, have the finish be offscreen so that player has to travel to it
-// polygon player objects
 
 document.addEventListener("contextmenu", (event) => event.preventDefault());
 
-let player, goal, ball, startCoords, movingObstacle1, movingObstacle2, movingXPos;
+let player, goal, ball, startCoords, movingObstacle1, movingObstacle2, rotatingObstacle1, rotatingObstacle2, movingXPos;
 let staticStart;
 let obstacles, lines, nodes;
 let shouldMakeWall = false;
@@ -64,7 +65,7 @@ function startNewGame() {
 
 	obstacles.removeSprites();
 
-	for (let i = 0; i < 8; i++) {
+	for (let i = 0; i < 6; i++) {
 		let xPos = random(
 			min(startCoords[0], finishCoords[0]) + 0.05,
 			max(startCoords[0], finishCoords[0]) - 0.05
@@ -100,8 +101,25 @@ function startNewGame() {
 		max(startCoords[0], finishCoords[0]) - 0.05
 	);
 	movingObstacle2 = createSprite(window.innerWidth * movingXPos, window.innerHeight * random(0.3, 0.7), 50, 200, "static");
-	movingObstacle2.shapeColor = "green";
+	movingObstacle2.shapeColor = "blue";
 	player.overlap(movingObstacle2, reset);
+
+	movingXPos = random(
+		min(startCoords[0], finishCoords[0]) + 0.05,
+		max(startCoords[0], finishCoords[0]) - 0.05
+	);
+	rotatingObstacle1 = new Sprite(window.innerWidth * movingXPos, window.innerHeight * random(0.3, 0.7), 50, 200, "kinematic");
+	rotatingObstacle1.shapeColor = "purple";
+	rotatingObstacle1.rotationSpeed = random(-0.5, 0.5);
+	player.overlap(rotatingObstacle1, reset);
+	movingXPos = random(
+		min(startCoords[0], finishCoords[0]) + 0.05,
+		max(startCoords[0], finishCoords[0]) - 0.05
+	);
+	rotatingObstacle2 = new Sprite(window.innerWidth * movingXPos, window.innerHeight * random(0.3, 0.7), 50, 200, "kinematic");
+	rotatingObstacle2.shapeColor = "purple";
+	rotatingObstacle2.rotationSpeed = random(-0.5, 0.5);
+	player.overlap(rotatingObstacle2, reset);
 }
 
 function reset() {
@@ -170,6 +188,9 @@ function win() {
 	goal.remove();
 	movingObstacle1.remove();
 	movingObstacle2.remove();
+	rotatingObstacle1.remove();
+	rotatingObstacle2.remove();
+	playerShape = 0;
 	startNewGame();
 }
 
