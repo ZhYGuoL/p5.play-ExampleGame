@@ -1,7 +1,6 @@
 // IDEAS
 // TODOForce the game to have a more horizontal aspect ratio
 // TODO rotating obstacles
-// TODO if touch moving obstacle, reset 
 // moving finish
 // checkpoints
 // once Quinton implements the virtual camera, have the finish be offscreen so that player has to travel to it
@@ -9,12 +8,13 @@
 
 document.addEventListener("contextmenu", (event) => event.preventDefault());
 
-let player, goal, ball;
+let player, goal, ball, startCoords, movingObstacle1, movingObstacle2, movingXPos;
 let staticStart;
 let obstacles, lines, nodes;
 let shouldMakeWall = false;
 let cosValue = 0;
-let phaseShift = Math.random(0, 2);
+let phaseShift = 1;
+let playerShape = 0;
 
 function setup() {
 	// createCanvas size is determined by the window size
@@ -92,22 +92,51 @@ function startNewGame() {
 		min(startCoords[0], finishCoords[0]) + 0.05,
 		max(startCoords[0], finishCoords[0]) - 0.05
 	);
-	movingObstacle1 = createSprite(window.innerWidth * movingXPos, window.innerHeight * random(0.2, 0.8), 50, 200, "static");
+	movingObstacle1 = createSprite(window.innerWidth * movingXPos, window.innerHeight * random(0.3, 0.7), 50, 200, "static");
 	movingObstacle1.shapeColor = "blue";
 	player.overlap(movingObstacle1, reset);
 	movingXPos = random(
 		min(startCoords[0], finishCoords[0]) + 0.05,
 		max(startCoords[0], finishCoords[0]) - 0.05
 	);
-	movingObstacle2 = createSprite(window.innerWidth * movingXPos, window.innerHeight * random(0.2, 0.8), 50, 200, "static");
+	movingObstacle2 = createSprite(window.innerWidth * movingXPos, window.innerHeight * random(0.3, 0.7), 50, 200, "static");
 	movingObstacle2.shapeColor = "green";
-	player.overlap(movingObstacle1, reset);
+	player.overlap(movingObstacle2, reset);
 }
 
 function reset() {
 	console.log("reset");
 	lines.removeSprites();
 	nodes.removeSprites();
+	player.remove();
+	switch (playerShape) {
+		case 0:
+			player = createSprite(
+				window.innerWidth * startCoords[0],
+				window.innerHeight * startCoords[1],
+				30
+			);
+			break;
+		case 1:
+			player = createSprite(
+				window.innerWidth * startCoords[0], 
+				window.innerHeight * startCoords[1], 
+				30, 30
+			);
+			break;
+		case 2:
+			player = createSprite(
+				window.innerWidth * startCoords[0], 
+				window.innerHeight * startCoords[1], 
+				[30, 120, 3]
+			);
+			break;
+	}
+	player.shapeColor = 200;
+	player.overlap(obstacles, reset);
+	player.overlap(goal, win);
+	player.overlap(movingObstacle1, reset);
+	player.overlap(movingObstacle2, reset);
 	staticStart = 200;
 }
 
@@ -145,12 +174,16 @@ function win() {
 }
 
 function keyPressed() {
-	if (key === " " && staticStart) {
-		staticStart = !staticStart;
+	// if (key === " " && staticStart) {
+	// 	staticStart = !staticStart;
+	// }
+	if (key === "x") {
+		playerShape = (playerShape + 1) % 3;
+		reset()
 	}
+
 	if (key === "z") {
-		nodes.removeSprites();
-		lines.removeSprites();
+		reset()
 	}
 }
 
