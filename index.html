@@ -4,7 +4,7 @@
     <title>p5.play Example</title>
     <script src="planck.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/p5.js" type="text/javascript"></script>
-    <script src="p5.play.js" type="text/javascript"></script>
+    <script src="node_modules/p5.play/lib/p5.play.js" type="text/javascript"></script>
     <script src="sketch.js"></script>
     <!-- import style.css -->
     <link rel="stylesheet" href="style.css">
@@ -17,8 +17,6 @@
         <div class="bgCanvas"></div>
 
         <script>
-            window.addEventListener('keydown', function() {if (event.keyCode == 32) {document.body.style.overflow = "hidden";}});
-            window.addEventListener('keyup', function() {if (event.keyCode == 32) {document.body.style.overflow = "auto";}});
         </script>
 </body>
 </html>

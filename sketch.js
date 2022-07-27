@@ -1,28 +1,82 @@
-// IDEAS
-// TODOForce the game to have a more horizontal aspect ratio
-// make it so rotating objects are always rotating higher than a certain speed (two ranges for randomizing speed)
+// TODO IDEAS
 // moving finish
-// group obstacles together
-// randomize number of obstacles
 // checkpoints
 // once Quinton implements the virtual camera, have the finish be offscreen so that player has to travel to it
 
+// * EDITOR
+// change size of objects
+// change range of movement for moving and rotating obstacles
+// able to play your edited level
+
 document.addEventListener("contextmenu", (event) => event.preventDefault());
 
-let player, goal, ball, startCoords, movingObstacle1, movingObstacle2, rotatingObstacle1, rotatingObstacle2, movingXPos;
+let player, goal, ball, startCoords, movingXPos, movingObstacles;
 let staticStart;
-let obstacles, lines, nodes;
+let obstacles;
+let rotatingObstacles;
+let rotatingObstacle;
+let stationaryObstacles;
+let lines, nodes;
 let shouldMakeWall = false;
-let cosValue = 0;
+
+
+
 let phaseShift = 1;
 let playerShape = 0;
 
+let mouseHeld = false;
+let draggedObstacle;
+let dragXAdjust = 0;
+let dragYAdjust = 0;
+let typeOfObstacle = null;
+
+let onMainMenu = true;
+let inLevelEditor = false;
+let inGame = false;
+
+let test = 1;
+
+function randInt(min, max) {
+	randNum = Math.floor(Math.random() * max + 1);
+	while (randNum < min || randNum > max) {
+		randNum = Math.floor(Math.random() * max + 1);
+	}
+	return randNum;
+}
+
 function setup() {
 	// createCanvas size is determined by the window size
-	createCanvas(window.innerWidth, window.innerHeight);
+
+	let h = window.innerHeight;
+	let w = (window.innerHeight * 16) / 9;
+
+	if (w > window.innerWidth) {
+		w = window.innerWidth;
+		h = (window.innerWidth * 9) / 16;
+	}
+
+	createCanvas(w, h);
 	new World(0, 9.8);
-	
+
 	obstacles = new Group();
+
+	stationaryObstacles = obstacles.subGroup();
+	stationaryObstacles.collider = "static";
+	stationaryObstacles.shapeColor = "red";
+	stationaryObstacles.width = width * 0.02;
+	stationaryObstacles.height = height * 0.12;
+
+	movingObstacles = obstacles.subGroup();
+	movingObstacles.collider = "static";
+	movingObstacles.shapeColor = "blue";
+	movingObstacles.width = width * 0.02;
+	movingObstacles.height = height * 0.12;
+
+	rotatingObstacles = obstacles.subGroup();
+	rotatingObstacles.collider = "kinematic";
+	rotatingObstacles.shapeColor = "green";
+	rotatingObstacles.width = width * 0.02;
+	rotatingObstacles.height = height * 0.12;
 
 	lines = new Group();
 	lines.friction = 0;
@@ -30,7 +84,44 @@ function setup() {
 	nodes = new Group();
 	nodes.overlap(allSprites);
 
-	startNewGame();
+	// testing
+	// startLevelEditor();
+}
+
+function placePlayerAndGoal() {
+	if (inLevelEditor) {
+		startCoords = [0.1, 0.1];
+		finishCoords = [0.7, 0.7];
+	} else {
+		startCoords = [random(0.05, 0.95), random(0.05, 0.15)];
+		finishCoords = [random(0.05, 0.95), random(0.06, 0.95)];
+		while (
+			finishCoords[1] < startCoords[1] ||
+			((10 * finishCoords[0] - 10 * startCoords[0]) ** 2 +
+				(10 * finishCoords[1] - 10 * startCoords[1]) ** 2) /
+				10 <
+				8 ||
+			Math.abs(finishCoords[0] - startCoords[0]) < 0.5
+		) {
+			startCoords = [random(0.05, 0.95), random(0.05, 0.15)];
+			finishCoords = [random(0.06, 0.95), random(0.06, 0.95)];
+		}
+	}
+	player = createSprite(
+		width * startCoords[0],
+		height * startCoords[1],
+		width * 0.02
+	);
+	player.shapeColor = 200;
+
+	goal = createSprite(
+		width * finishCoords[0],
+		height * finishCoords[1],
+		width * 0.02,
+		"static"
+	);
+	goal.shapeColor = "green";
+	player.overlap(goal, win);
 }
 
 function startNewGame() {
@@ -45,81 +136,63 @@ function startNewGame() {
 		Math.abs(finishCoords[0] - startCoords[0]) < 0.5
 	) {
 		startCoords = [random(0.05, 0.95), random(0.05, 0.15)];
-		finishCoords = [random(0.06, 1), random(0.06, 1)];
+		finishCoords = [random(0.06, 0.95), random(0.06, 0.95)];
 	}
-	player = createSprite(
-		window.innerWidth * startCoords[0],
-		window.innerHeight * startCoords[1],
-		30
-	);
+	player = createSprite(width * startCoords[0], height * startCoords[1], 30);
 	player.shapeColor = 200;
 
 	goal = createSprite(
-		window.innerWidth * finishCoords[0],
-		window.innerHeight * finishCoords[1],
+		width * finishCoords[0],
+		height * finishCoords[1],
 		30,
 		"static"
 	);
 	goal.shapeColor = "green";
 	player.overlap(goal, win);
 
-	obstacles.removeSprites();
+	stationaryObstacles.removeSprites();
 
-	for (let i = 0; i < 6; i++) {
+	for (let i = 0; i < randInt(5, 7); i++) {
 		let xPos = random(
 			min(startCoords[0], finishCoords[0]) + 0.05,
 			max(startCoords[0], finishCoords[0]) - 0.05
 		);
 		let yPos = random(0.05, 0.95);
-		let coords = [xPos * window.innerWidth, yPos * window.innerHeight];
-		
-		let obstacle = new Sprite(coords[0], coords[1], 50, 200, "static");
+		let coords = [xPos * width, yPos * height];
+
+		let obstacle = stationaryObstacles.sprite(coords[0], coords[1]);
 		obstacle.shapeColor = "red";
 		obstacle.rotation = random(0, 360);
-
-
-		obstacles.add(obstacle);
-		// if (Math.random() > 0.5) {
-			// 	obstacle.shapeColor = "red";
-			// }
-			// else {
-				// 	obstacle.rotationSpeed = random(-10, 10);
-				// 	obstacle.shapeColor = "blue";
-				// }
 	}
-	player.overlap(obstacles, reset);
-	staticStart = 200;
-	movingXPos = random(
-		min(startCoords[0], finishCoords[0]) + 0.05,
-		max(startCoords[0], finishCoords[0]) - 0.05
-	);
-	movingObstacle1 = createSprite(window.innerWidth * movingXPos, window.innerHeight * random(0.3, 0.7), 50, 200, "static");
-	movingObstacle1.shapeColor = "blue";
-	player.overlap(movingObstacle1, reset);
-	movingXPos = random(
-		min(startCoords[0], finishCoords[0]) + 0.05,
-		max(startCoords[0], finishCoords[0]) - 0.05
-	);
-	movingObstacle2 = createSprite(window.innerWidth * movingXPos, window.innerHeight * random(0.3, 0.7), 50, 200, "static");
-	movingObstacle2.shapeColor = "blue";
-	player.overlap(movingObstacle2, reset);
 
-	movingXPos = random(
-		min(startCoords[0], finishCoords[0]) + 0.05,
-		max(startCoords[0], finishCoords[0]) - 0.05
-	);
-	rotatingObstacle1 = new Sprite(window.innerWidth * movingXPos, window.innerHeight * random(0.3, 0.7), 50, 200, "kinematic");
-	rotatingObstacle1.shapeColor = "purple";
-	rotatingObstacle1.rotationSpeed = random(-0.5, 0.5);
-	player.overlap(rotatingObstacle1, reset);
-	movingXPos = random(
-		min(startCoords[0], finishCoords[0]) + 0.05,
-		max(startCoords[0], finishCoords[0]) - 0.05
-	);
-	rotatingObstacle2 = new Sprite(window.innerWidth * movingXPos, window.innerHeight * random(0.3, 0.7), 50, 200, "kinematic");
-	rotatingObstacle2.shapeColor = "purple";
-	rotatingObstacle2.rotationSpeed = random(-0.5, 0.5);
-	player.overlap(rotatingObstacle2, reset);
+	player.overlap(stationaryObstacles, reset);
+
+	// Trying to group moving obstacles together
+	for (let i = 0; i < 2; i++) {
+		staticStart = 200;
+		movingXPos = random(
+			min(startCoords[0], finishCoords[0]) + 0.05,
+			max(startCoords[0], finishCoords[0]) - 0.05
+		);
+		let movingObstacle = movingObstacles.sprite(
+			width * movingXPos,
+			height * random(0.3, 0.7)
+		);
+		movingObstacle.range = random(4, 8);
+		movingObstacle.initAngle = random(0, 360);
+	}
+
+	for (let i = 0; i < randInt(1, 2); i++) {
+		movingXPos = random(
+			min(startCoords[0], finishCoords[0]) + 0.05,
+			max(startCoords[0], finishCoords[0]) - 0.05
+		);
+		let rotatingObstacle = rotatingObstacles.sprite(
+			width * movingXPos,
+			height * random(0.3, 0.7)
+		);
+		rotatingObstacle.rotationSpeed = Math.sign(random(-0.1, 0.1))*random(0.5, 1);
+	}
 }
 
 function reset() {
@@ -137,47 +210,69 @@ function reset() {
 			break;
 		case 1:
 			player = createSprite(
-				window.innerWidth * startCoords[0], 
-				window.innerHeight * startCoords[1], 
-				30, 30
+				window.innerWidth * startCoords[0],
+				window.innerHeight * startCoords[1],
+				30,
+				30
 			);
 			break;
 		case 2:
 			player = createSprite(
-				window.innerWidth * startCoords[0], 
-				window.innerHeight * startCoords[1], 
+				window.innerWidth * startCoords[0],
+				window.innerHeight * startCoords[1],
 				[30, 120, 3]
 			);
 			break;
 	}
 	player.shapeColor = 200;
-	player.overlap(obstacles, reset);
+	player.overlap(stationaryObstacles, reset);
+	player.overlap(rotatingObstacles, reset);
 	player.overlap(goal, win);
-	player.overlap(movingObstacle1, reset);
-	player.overlap(movingObstacle2, reset);
+	player.overlap(movingObstacles, reset);
 	staticStart = 200;
 }
 
 function draw() {
 	background(220);
-
 	fill(0);
+	if (onMainMenu) {
+		textAlign(CENTER, CENTER);
 
-	staticStart--;
+		let x = width / 2;
+		let y = height / 2;
+		textSize(36);
+		text("Draw the Line", x, y - 100);
+		textSize(24);
+		text("Space: Play Endless Mode", x, y);
+		text("E: Open Level Editor", x, y + 30);
+	}
+	if (inGame) {
+		staticStart--;
 
-	if (staticStart > 0) {
+		if (staticStart > 0) {
+			player.x = startCoords[0] * window.innerWidth;
+			player.y = startCoords[1] * window.innerHeight;
+			player.speed = 0;
+		}
+
+		if (player.y > height) {
+			reset();
+		}
+
+		for (let movingObstacle of movingObstacles) {
+			movingObstacle.y +=
+				Math.cos(movingObstacle.initAngle) * movingObstacle.range;
+			movingObstacle.initAngle += 0.025;
+		}
+	}
+	if (inLevelEditor) {
+		makePanel();
+		// TODO make able to release player (ie if-statement here)
 		player.x = startCoords[0] * window.innerWidth;
 		player.y = startCoords[1] * window.innerHeight;
 		player.speed = 0;
 	}
 
-	if (player.y > height) {
-		reset();
-	}
-
-	movingObstacle1.y = movingObstacle1.y + Math.cos(cosValue) * 5;
-	movingObstacle2.y = movingObstacle2.y + Math.cos(cosValue + phaseShift) * 5;
-	cosValue += 0.025;
 }
 
 function win() {
@@ -186,12 +281,16 @@ function win() {
 	nodes.removeSprites();
 	player.remove();
 	goal.remove();
-	movingObstacle1.remove();
-	movingObstacle2.remove();
-	rotatingObstacle1.remove();
-	rotatingObstacle2.remove();
+	movingObstacles.removeSprites();
+	rotatingObstacles.removeSprites();
 	playerShape = 0;
 	startNewGame();
+}
+
+function makePanel() {
+	fill(160);
+	let panelWidth = width * 0.1;
+	rect(width - panelWidth, 0, panelWidth, height);
 }
 
 function keyPressed() {
@@ -200,35 +299,106 @@ function keyPressed() {
 	// }
 	if (key === "x") {
 		playerShape = (playerShape + 1) % 3;
-		reset()
+		reset();
 	}
 
 	if (key === "z") {
-		reset()
+		reset();
+	}
+
+	if (key === "e") {
+		inLevelEditor = true;
+		if (onMainMenu) startLevelEditor();
+		onMainMenu = false;
+	}
+
+	if (key === " " && !inGame) {
+		onMainMenu = false;
+		inGame = true;
+		startNewGame();
 	}
 }
 
+function startLevelEditor() {
+	placePlayerAndGoal();
+
+	stationaryObstacles.sprite(width - 75, height * 0.25);
+	movingObstacles.sprite(width - 75, height * 0.5);
+	rotatingObstacles.sprite(width - 75, height * 0.75);
+}
+
 function mousePressed() {
-	if (mouseButton === LEFT) {
-		let lastNode;
-		if (nodes.length) lastNode = nodes[nodes.length - 1];
+	if (inGame) {
+		if (mouseButton === LEFT) {
+			let lastNode;
+			if (nodes.length) lastNode = nodes[nodes.length - 1];
 
-		if (!nodes.length || lastNode.x != mouseX || lastNode.y != mouseY) {
-			let node = nodes.sprite(mouseX, mouseY, 10, "static");
-			node.life = 200;
+			if (!nodes.length || lastNode.x != mouseX || lastNode.y != mouseY) {
+				let node = nodes.sprite(mouseX, mouseY, 10, "static");
+				node.life = 200;
 
-			if (nodes.length > 1 && shouldMakeWall) {
-				let coords = [
-					[mouseX, mouseY],
-					[lastNode.x, lastNode.y],
-				];
-				let line = lines.sprite(mouseX, mouseY, coords, "static");
-				line.life = 200;
+				if (nodes.length > 1 && shouldMakeWall) {
+					let coords = [
+						[mouseX, mouseY],
+						[lastNode.x, lastNode.y],
+					];
+					let line = lines.sprite(mouseX, mouseY, coords, "static");
+					line.life = 200;
+				}
+				shouldMakeWall = true;
 			}
-			shouldMakeWall = true;
+		} else if (mouseButton === RIGHT) {
+			shouldMakeWall = false;
 		}
-	} else if (mouseButton === RIGHT) {
-		shouldMakeWall = false;
+	}
+}
+
+function mouseDragged() {
+	if (inLevelEditor) {
+		if (!mouseHeld) {
+			typeOfObstacle = 0;
+			for (let obstacle of obstacles) {
+				if (obstacle.x - obstacle.width / 2 < mouseX && obstacle.y - obstacle.height / 2 < mouseY && obstacle.x + obstacle.width / 2 > mouseX && obstacle.y + obstacle.height / 2 > mouseY ) {
+					dragXAdjust = obstacle.x - mouseX;
+					dragYAdjust = obstacle.y - mouseY;
+					draggedObstacle = obstacle;
+					mouseHeld = true;
+					break;
+				}
+				typeOfObstacle++;
+			}
+		}
+		if (mouseHeld) {
+			switch(typeOfObstacle) {
+				case 0:
+					draggedObstacle = stationaryObstacles.sprite(width - 75, height * 0.25);
+					typeOfObstacle = 3;
+					break;
+				case 1:
+					draggedObstacle = movingObstacles.sprite(width - 75, height * 0.5);
+					typeOfObstacle = 3;
+					break;
+				case 2:
+					draggedObstacle = rotatingObstacles.sprite(width - 75, height * 0.75);
+					typeOfObstacle = 3;
+					break;
+				case 3:
+					break;
+
+			}
+			draggedObstacle.x = mouseX + dragXAdjust;
+			draggedObstacle.y = mouseY + dragYAdjust;
+		}
+		
+		// console.log(typeOfObstacle)
+		// console.log(obstacles)
+	}
+}
+
+function mouseReleased() {
+	if (inLevelEditor) {
+		mouseHeld = false;
+		draggedObstacle = null;
 	}
 }
 
