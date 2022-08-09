@@ -21,6 +21,8 @@ let rotatingObstacle;
 let stationaryObstacles;
 let lines, nodes;
 let shouldMakeWall = false;
+let goals;
+let points = 0;
 
 let phaseShift = 1;
 let playerShape = 0;
@@ -62,6 +64,11 @@ function setup() {
 
   obstacles = new Group();
 
+  goals = new Group();
+  goals.collider = "static";
+  goals.shapeColor = "green";
+  goals.diameter = width * 0.02;
+
   stationaryObstacles = new obstacles.Group();
   stationaryObstacles.collider = "static";
   stationaryObstacles.shapeColor = "red";
@@ -79,8 +86,6 @@ function setup() {
   rotatingObstacles.shapeColor = "green";
   rotatingObstacles.width = width * 0.02;
   rotatingObstacles.height = height * 0.12;
-
-  obstacles;
 
   lines = new Group();
   lines.friction = 0;
@@ -118,14 +123,7 @@ function placePlayerAndGoal() {
   );
   player.shapeColor = 200;
 
-  goal = new Sprite(
-    width * finishCoords[0],
-    height * finishCoords[1],
-    width * 0.02,
-    "static"
-  );
-  goal.shapeColor = "green";
-  player.overlap(goal, win);
+  new goals.Sprite(width * finishCoords[0], height * finishCoords[1]);
 }
 
 function startNewGame() {
@@ -145,18 +143,24 @@ function startNewGame() {
   player = new Sprite(width * startCoords[0], height * startCoords[1], 30);
   player.shapeColor = 200;
 
-  goal = new Sprite(
-    width * finishCoords[0],
-    height * finishCoords[1],
-    30,
-    "static"
+  player.overlap(goals, (player, goal) => {
+    goal.remove();
+    if (goals.length == 0) {
+      win();
+    }
+  });
+  new goals.Sprite(width * finishCoords[0], height * finishCoords[1]);
+  let xPos = random(
+    min(startCoords[0], finishCoords[0]) + 0.05,
+    max(startCoords[0], finishCoords[0]) - 0.05
   );
-  goal.shapeColor = "green";
-  player.overlap(goal, win);
+  let yPos = random(0.05, 0.95);
+  let coords = [xPos * width, yPos * height];
+  new goals.Sprite(coords[0], coords[1]);
 
   stationaryObstacles.removeSprites();
 
-  for (let i = 0; i < randInt(5, 7); i++) {
+  for (let i = 0; i < 10; i++) {
     let xPos = random(
       min(startCoords[0], finishCoords[0]) + 0.05,
       max(startCoords[0], finishCoords[0]) - 0.05
@@ -164,40 +168,13 @@ function startNewGame() {
     let yPos = random(0.05, 0.95);
     let coords = [xPos * width, yPos * height];
 
-    let obstacle = new stationaryObstacles.Sprite(coords[0], coords[1]);
-    obstacle.shapeColor = "red";
-    obstacle.rotation = random(0, 360);
+    new stationaryObstacles.Sprite(coords[0], coords[1]);
   }
 
   player.overlap(stationaryObstacles, reset);
+  staticStart = 200;
 
   // Trying to group moving obstacles together
-  for (let i = 0; i < 2; i++) {
-    staticStart = 200;
-    movingXPos = random(
-      min(startCoords[0], finishCoords[0]) + 0.05,
-      max(startCoords[0], finishCoords[0]) - 0.05
-    );
-    let movingObstacle = new movingObstacles.Sprite(
-      width * movingXPos,
-      height * random(0.3, 0.7)
-    );
-    movingObstacle.range = random(4, 8);
-    movingObstacle.initAngle = random(0, 360);
-  }
-
-  for (let i = 0; i < randInt(1, 2); i++) {
-    movingXPos = random(
-      min(startCoords[0], finishCoords[0]) + 0.05,
-      max(startCoords[0], finishCoords[0]) - 0.05
-    );
-    let rotatingObstacle = new rotatingObstacles.Sprite(
-      width * movingXPos,
-      height * random(0.3, 0.7)
-    );
-    rotatingObstacle.rotationSpeed =
-      Math.sign(random(-0.1, 0.1)) * random(0.5, 1);
-  }
 }
 
 function reset() {
@@ -258,6 +235,7 @@ function draw() {
     staticStart--;
 
     if (staticStart > 0) {
+      player.shapeColor = staticStart + 100;
       player.x = startCoords[0] * window.innerWidth;
       player.y = startCoords[1] * window.innerHeight;
       player.speed = 0;
@@ -268,15 +246,15 @@ function draw() {
         Math.cos(movingObstacle.initAngle) * movingObstacle.range;
       movingObstacle.initAngle += 0.025;
     }
+    if (player.y - player.h * 2 > height) {
+      console.log("start");
+      reset();
+    }
   }
   if (inLevelEditor) {
     makePanel();
     // TODO make able to release player (ie if-statement here)
     if (inEditorGame) {
-      if (player.y > height) {
-        console.log("start");
-        reset();
-      }
     } else {
       player.x = startCoords[0] * window.innerWidth;
       player.y = startCoords[1] * window.innerHeight;
@@ -290,7 +268,6 @@ function win() {
   lines.removeSprites();
   nodes.removeSprites();
   player.remove();
-  goal.remove();
   movingObstacles.removeSprites();
   rotatingObstacles.removeSprites();
   playerShape = 0;
